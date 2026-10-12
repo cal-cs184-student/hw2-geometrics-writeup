@@ -254,7 +254,80 @@
 			<h2>Section II: Triangle Meshes and Half-Edge Data Structure</h2>
 
 			<h3>Part 3: Area-weighted vertex normals</h3>
-			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+			<h4>Implementation</h4>
+
+			<p>
+				To calculate the area-weighted normal at a vertex, I traversed all
+				triangular faces incident to that vertex using the half-edge data
+				structure. Starting from the vertex's half-edge, I moved around its
+				one-ring neighborhood using
+				<code>h = h->twin()->next()</code> until I returned to the starting
+				half-edge.
+			</p>
+
+			<p>
+				For each non-boundary triangle, I obtained its three vertex positions
+				\(p_0\), \(p_1\), and \(p_2\). I calculated its contribution using
+			</p>
+
+			<p>
+				\[
+				N_f = (p_1-p_0)\times(p_2-p_0).
+				\]
+			</p>
+
+			<p>
+				The magnitude of this cross product is twice the area of the triangle,
+				so summing these vectors automatically gives larger faces more influence
+				over the resulting vertex normal. The constant factor of two does not
+				affect the result because I normalize the accumulated vector after
+				visiting all incident faces.
+			</p>
+
+			<p>
+				I used <code>HalfedgeCIter</code> because
+				<code>Vertex::normal()</code> is a constant member function and must not
+				modify the mesh. I also ignored virtual boundary faces so that they did
+				not contribute invalid triangle normals. Finally, I called
+				<code>unit()</code> on the accumulated vector to return a unit-length
+				area-weighted normal.
+			</p>
+
+			<h4>Flat and Phong Shading Comparison</h4>
+
+			<div style="display: flex; flex-direction: column; align-items: center;">
+				<table style="width: 100%; text-align: center; border-collapse: collapse;">
+					<tr>
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part3Flat.png"
+								 alt="Teapot rendered with flat shading"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The <code>dae/teapot.dae</code> model with default flat
+								shading. Individual triangular faces are visible.
+							</figcaption>
+						</td>
+
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part3Phong.png"
+								 alt="Teapot rendered with Phong shading"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The same model and camera position after pressing
+								<code>Q</code> to enable Phong shading with area-weighted
+								vertex normals.
+							</figcaption>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<p>
+				Flat shading assigns one normal to each triangle, making the boundaries
+				between neighboring faces visible. Phong shading interpolates the
+				area-weighted vertex normals across each triangle, producing a much
+				smoother appearance without changing the geometry of the teapot.
+			</p>
 
 			<h3>Part 4: Edge flip</h3>
 			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
