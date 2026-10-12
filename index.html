@@ -32,18 +32,39 @@
 
 			<br>
 
-			Link to webpage: (TODO) <a href="https://cal-cs184-student.github.io/hw2-geometrics-writeup/">github.com/cal-cs184-student/hw2-geometrics</a>
+			Link to webpage: <a href="https://cal-cs184-student.github.io/hw2-geometrics-writeup/">https://cal-cs184-student.github.io/hw2-geometrics-writeup/</a>
 
 			<br>
 
-			Link to GitHub repository: (TODO) <a href="https://github.com/cal-cs184-student/hw2-geometrics">github.com/cal-cs184-student/hw2-geometrics</a>
+			Link to GitHub repository: <a href="https://github.com/cal-cs184-student/hw2-geometrics">https://github.com/cal-cs184-student/hw2-geometrics</a>
 
 
 			<!--
 	We've already added one heading per part, to make your write-up as navigable when grading. Please fit your write-up within these sections!
 	-->
+			<h2>Overview</h2>
 
+			<p>
+				In this assignment, I implemented algorithms for evaluating Bezier curves
+				and surfaces, calculating area-weighted vertex normals, modifying triangle
+				mesh connectivity with edge flips and splits, and increasing mesh resolution
+				using Loop subdivision. The first section demonstrated how repeated linear
+				interpolation can construct smooth curves and surfaces. The second section
+				showed how the half-edge data structure supports efficient local mesh
+				operations.
+			</p>
+
+			<p>
+				The most important lesson I learned was that geometric algorithms depend on
+				both vertex positions and mesh connectivity. Edge flips and splits required
+				carefully updating every affected half-edge, vertex, edge, and face pointer.
+				Loop subdivision also showed that even geometrically symmetric objects can
+				subdivide asymmetrically when their triangle connectivity is asymmetric.
+				Precomputing positions before changing the topology and distinguishing old
+				and new mesh elements helped prevent iteration-order and connectivity errors.
+			</p>
 			<h2>Section I: Bezier Curves and Surfaces</h2>
+			<h3>Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
 
 			<h4>Algorithm and Implementation</h4>
 
@@ -330,28 +351,491 @@
 			</p>
 
 			<h3>Part 4: Edge flip</h3>
-			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+			<h4>Implementation</h4>
+
+			<p>
+				An edge flip replaces the shared diagonal between two adjacent triangles.
+				For triangles \((a,b,c)\) and \((c,b,d)\), flipping the shared edge
+				\((b,c)\) replaces it with \((a,d)\), producing triangles
+				\((a,d,c)\) and \((a,b,d)\). The operation changes the mesh connectivity
+				but does not change any vertex positions.
+			</p>
+
+			<p>
+				I implemented <code>HalfedgeMesh::flipEdge</code> by first obtaining the
+				six half-edges, four vertices, five edges, and two faces in the local
+				two-triangle neighborhood. If either neighboring face was a boundary
+				face, I immediately returned the original edge because a boundary edge
+				does not have two ordinary adjacent triangles.
+			</p>
+
+			<p>
+				For an interior edge, I reused the existing mesh elements and changed
+				only their connectivity. After the flip, I arranged the first face's
+				half-edges into the cycle
+				\(a \rightarrow d \rightarrow c \rightarrow a\), and the second face's
+				half-edges into the cycle
+				\(d \rightarrow a \rightarrow b \rightarrow d\). I used
+				<code>setNeighbors</code> to assign every affected half-edge's
+				<code>next</code>, <code>twin</code>, <code>vertex</code>,
+				<code>edge</code>, and <code>face</code> pointers. I also assigned valid
+				half-edge pointers to all affected vertices, edges, and faces.
+			</p>
+
+			<p>
+				The implementation neither creates nor deletes mesh elements and only
+				updates a fixed-size local neighborhood. Therefore, one edge flip uses
+				constant \(O(1)\) time regardless of the size of the complete mesh.
+			</p>
+
+			<h4>Edge-Flip Results</h4>
+
+			<div style="display: flex; flex-direction: column; align-items: center;">
+				<table style="width: 100%; text-align: center; border-collapse: collapse;">
+					<tr>
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part4Before.png"
+								 alt="Teapot mesh before edge flips"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The original <code>dae/teapot.dae</code> wireframe before
+								performing edge flips.
+							</figcaption>
+						</td>
+
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part4After.png"
+								 alt="Teapot mesh after several edge flips"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The same region of the teapot after flipping several
+								interior edges. The local triangle diagonals have changed,
+								while the mesh remains connected.
+							</figcaption>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<h4>Testing and Debugging</h4>
+
+			<p>
+				I initially thought that pressing <code>F</code> was not changing the
+				mesh. The actual problem was that I was clicking and dragging vertices,
+				which modified their positions, instead of selecting an edge. I enabled
+				wireframe mode with <code>W</code>, zoomed into the mesh, and used a
+				single click on the center of an edge before pressing <code>F</code>.
+				This made the change in the shared diagonal visible.
+			</p>
+
+			<p>
+				I tested the implementation by flipping several nearby interior edges
+				rather than testing only one edge. This helped verify that the
+				<code>next</code>, <code>twin</code>, <code>vertex</code>,
+				<code>edge</code>, and <code>face</code> pointers remained consistent
+				after repeated operations. The mesh did not develop holes or disconnected
+				triangles, and boundary-edge requests returned without modifying the
+				mesh.
+			</p>
 
 			<h3>Part 5: Edge split</h3>
-			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+			<h4>Implementation</h4>
+
+			<p>
+				An edge split inserts a new vertex at the midpoint of an existing edge.
+				When an interior edge is shared by two triangles, connecting the new
+				midpoint vertex to the two opposite vertices divides the original two
+				triangles into four smaller triangles.
+			</p>
+
+			<p>
+				I implemented <code>HalfedgeMesh::splitEdge</code> by first collecting
+				the local neighborhood around the selected edge: six existing
+				half-edges, four vertices, five edges, and two faces. I ignored boundary
+				edges for the required implementation because splitting boundary edges
+				requires separate handling of the virtual boundary face.
+			</p>
+
+			<p>
+				For an interior edge, I created one new vertex, three new edges, six new
+				half-edges, and two new faces. I reused the original edge, its two
+				half-edges, and its two adjacent faces. The new vertex position was set
+				to the midpoint of the original edge using
+			</p>
+
+			<p>
+				\[
+				m = \frac{b+c}{2}.
+				\]
+			</p>
+
+			<p>
+				I then organized the half-edges into four three-half-edge cycles, one
+				for each resulting triangle. Using <code>setNeighbors</code>, I assigned
+				every affected half-edge's <code>next</code>, <code>twin</code>,
+				<code>vertex</code>, <code>edge</code>, and <code>face</code> pointers.
+				I also assigned valid half-edge pointers to every affected vertex, edge,
+				and face. The new vertex's half-edge points along the original split
+				edge, which will also be useful during Loop subdivision.
+			</p>
+
+			<p>
+				The operation performs only a fixed number of allocations and pointer
+				assignments in the local two-triangle neighborhood. Its running time is
+				therefore constant \(O(1)\), independent of the total mesh size.
+			</p>
+
+			<h4>Edge-Split Results</h4>
+
+			<div style="display: flex; flex-direction: column; align-items: center;">
+				<table style="width: 100%; text-align: center; border-collapse: collapse;">
+					<tr>
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part5BeforeSplit.png"
+								 alt="Teapot mesh before edge splits"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The original teapot wireframe before performing edge splits.
+							</figcaption>
+						</td>
+
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part5AfterSplit.png"
+								 alt="Teapot mesh after several edge splits"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The same region after several edge splits. Each selected
+								edge gained a midpoint vertex, and its two adjacent
+								triangles became four triangles.
+							</figcaption>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<h4>Combined Edge Splits and Edge Flips</h4>
+
+			<div style="display: flex; flex-direction: column; align-items: center;">
+				<table style="width: 100%; text-align: center; border-collapse: collapse;">
+					<tr>
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part5BeforeCombination.png"
+								 alt="Teapot mesh before combined splits and flips"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								A fresh region of the original teapot before applying a
+								combination of edge splits and edge flips.
+							</figcaption>
+						</td>
+
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part5AfterCombination.png"
+								 alt="Teapot mesh after combined splits and flips"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The same region after splitting edges with
+								<code>S</code> and flipping selected edges with
+								<code>F</code>.
+							</figcaption>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<h4>Testing and Debugging</h4>
+
+			<p>
+				The main challenge was ensuring that every pointer remained consistent
+				after introducing the new mesh elements. I handled this by labeling all
+				local elements before and after the operation, creating only the required
+				new elements, and explicitly assigning every pointer rather than updating
+				only the pointers that appeared to change.
+			</p>
+
+			<p>
+				I first tested several edge splits in wireframe mode and verified that
+				each pair of triangles became four triangles without creating holes.
+				I then alternated edge splits and edge flips in nearby regions. Repeated
+				operations completed without crashes or disconnected faces, providing
+				additional evidence that the <code>next</code>, <code>twin</code>,
+				<code>vertex</code>, <code>edge</code>, and <code>face</code>
+				relationships remained valid.
+			</p>
+
+			<p>
+				I did not implement the optional extra-credit support for splitting
+				boundary edges. Requests to split a boundary edge return without
+				modifying the mesh.
+			</p>
 
 			<h3>Part 6: Loop subdivision for mesh upsampling</h3>
-			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+			<h4>Implementation</h4>
 
-			<h2>(Optional) Section III: Potential Extra Credit - Art Competition: Model something Creative</h2>
-			Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+			<p>
+				Loop subdivision increases the resolution of a triangular mesh while
+				smoothing its surface. Each original triangle is subdivided into four
+				smaller triangles, and the vertex positions are updated using weighted
+				averages of the original mesh positions.
+			</p>
 
-			<h2>Additional Notes (please remove)</h2>
-			<ul>
-				<li>You can also add code if you'd like as so: <code>code code code</code></li>
-				<li>
-					If you'd like to add math equations,
-					<ul>
-						<li>You can write inline equations like so: \( a^2 + b^2 = c^2 \)</li>
-						<li>You can write display equations like so: \[ a^2 + b^2 = c^2 \]</li>
-					</ul>
-				</li>
-			</ul>
+			<p>
+				I implemented Loop subdivision in five stages. First, I stored iterators
+				to all original vertices and edges so that elements created later would
+				not accidentally be processed as original elements. I then computed and
+				stored the new positions of all original vertices without immediately
+				changing their current positions.
+			</p>
+
+			<p>
+				For an original vertex \(P\) with degree \(n\), I used
+			</p>
+
+			<p>
+				\[
+				P_{\text{new}}
+				=
+				(1-nu)P
+				+
+				u\sum P_{\text{neighbor}},
+				\]
+			</p>
+
+			<p>
+				where
+			</p>
+
+			<p>
+				\[
+				u =
+				\begin{cases}
+				\frac{3}{16}, & n=3,\\
+				\frac{3}{8n}, & n\ne3.
+				\end{cases}
+				\]
+			</p>
+
+			<p>
+				Next, I computed the future position of the new vertex associated with
+				each original edge. For an edge with endpoints \(A\) and \(B\), and
+				opposite triangle vertices \(C\) and \(D\), I used
+			</p>
+
+			<p>
+				\[
+				P_{\text{edge}}
+				=
+				\frac{3}{8}(A+B)
+				+
+				\frac{1}{8}(C+D).
+				\]
+			</p>
+
+			<p>
+				After calculating all positions from the original mesh, I split every
+				original edge using my Part 5 implementation. I marked each inserted
+				midpoint as a new vertex. The two segments lying along an original edge
+				were marked as old edges, while the edges connecting a midpoint to an
+				opposite vertex were marked as new edges.
+			</p>
+
+			<p>
+				I then flipped every new edge connecting exactly one old vertex and one
+				new vertex using my Part 4 edge-flip implementation. This creates the
+				required four-to-one triangle subdivision pattern. Finally, after all
+				topology changes were complete, I copied each stored
+				<code>newPosition</code> into the vertex's displayed
+				<code>position</code>.
+			</p>
+
+			<p>
+				Computing all new positions before modifying the mesh was important.
+				Updating positions immediately would cause later calculations to mix
+				old and new data, making the result depend on iteration order. Saving the
+				original edges in a separate vector was also important because otherwise
+				the algorithm could repeatedly split edges that it had just created.
+			</p>
+
+			<h4>Repeated Subdivision of the Original Cube</h4>
+
+			<div style="display: flex; flex-direction: column; align-items: center;">
+				<table style="width: 100%; text-align: center; border-collapse: collapse;">
+					<tr>
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part6CubeOriginal.png"
+								 alt="Original cube before Loop subdivision"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The original cube before Loop subdivision.
+							</figcaption>
+						</td>
+
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part6CubeLevel1.png"
+								 alt="Cube after one Loop subdivision"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The cube after one iteration of Loop subdivision.
+							</figcaption>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<figure>
+				<img src="assets/Part6CubeLevel3.png"
+					 alt="Cube after three Loop subdivision iterations"
+					 style="width: 70%;" />
+				<figcaption>
+					The original cube after three iterations of Loop subdivision.
+					The sharp corners have become rounded, and slight asymmetry is visible.
+				</figcaption>
+			</figure>
+
+			<p>
+				Each subdivision iteration increased the number of triangles and made
+				the cube progressively smoother. The sharp edges and corners became
+				rounded because Loop subdivision replaces every vertex position with a
+				weighted average involving its neighboring vertices. The averaging also
+				caused the mesh to shrink inward.
+			</p>
+
+			<p>
+				The repeatedly subdivided cube became slightly asymmetric. Although the
+				cube's geometric shape is initially symmetric, every square face is
+				represented by two triangles separated by one diagonal. The orientations
+				of these diagonals affect vertex degree and connectivity, so some cube
+				vertices receive different subdivision weights from other geometrically
+				equivalent vertices.
+			</p>
+
+			<h4>Symmetric Cube Preprocessing</h4>
+
+			<p>
+				To make the cube's connectivity more symmetric, I reopened the original
+				cube and split the diagonal on each of its six square faces. Each split
+				inserted a vertex at the center of a face and changed that face from two
+				triangles into four triangles arranged around the center. This gave each
+				square face the same radial triangulation and reduced the influence of
+				the original arbitrary diagonal orientations.
+			</p>
+
+			<div style="display: flex; flex-direction: column; align-items: center;">
+				<table style="width: 100%; text-align: center; border-collapse: collapse;">
+					<tr>
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part6CubePreprocessed.png"
+								 alt="Cube after symmetric preprocessing"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The cube after splitting all six face diagonals, but before
+								Loop subdivision.
+							</figcaption>
+						</td>
+
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part6PreprocessedLevel1.png"
+								 alt="Preprocessed cube after one subdivision"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The symmetrically preprocessed cube after one Loop
+								subdivision iteration.
+							</figcaption>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<figure>
+				<img src="assets/Part6PreprocessedLevel3.png"
+					 alt="Preprocessed cube after three subdivisions"
+					 style="width: 70%;" />
+				<figcaption>
+					The symmetrically preprocessed cube after three Loop subdivision
+					iterations.
+				</figcaption>
+			</figure>
+
+			<p>
+				The preprocessed cube remained more symmetric after repeated
+				subdivision. Splitting every face diagonal removed the unequal treatment
+				caused by selecting only one diagonal direction on each face. Edge flips
+				can also be used to redistribute local connectivity, but splitting the
+				six face diagonals was sufficient to give this cube a consistent
+				face-centered triangulation.
+			</p>
+
+			<h4>Reducing the Rounding of Sharp Features</h4>
+
+			<p>
+				I also tested whether adding supporting geometry before subdivision
+				could reduce the rounding of a sharp corner. I selected one cube corner
+				and split the three cube edges incident to that corner. This introduced
+				new neighboring vertices closer to the corner before applying Loop
+				subdivision.
+			</p>
+
+			<div style="display: flex; flex-direction: column; align-items: center;">
+				<table style="width: 100%; text-align: center; border-collapse: collapse;">
+					<tr>
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part6SharpOriginal.png"
+								 alt="Original cube corner before supporting edge splits"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The selected sharp cube corner before preprocessing.
+							</figcaption>
+						</td>
+
+						<td style="width: 50%; padding: 10px; vertical-align: top;">
+							<img src="assets/Part6SharpPresplit.png"
+								 alt="Cube corner after supporting edge splits"
+								 style="width: 95%; max-width: 400px;" />
+							<figcaption>
+								The corner after pre-splitting its three incident cube
+								edges to create supporting geometry.
+							</figcaption>
+						</td>
+					</tr>
+				</table>
+			</div>
+
+			<figure>
+				<img src="assets/Part6SharpAfterSubdivision.png"
+					 alt="Pre-split cube corner after Loop subdivision"
+					 style="width: 70%;" />
+				<figcaption>
+					The pre-split corner after three iterations of Loop subdivision.
+				</figcaption>
+			</figure>
+
+			<p>
+				Compared with the unmodified cube after three subdivision iterations,
+				the pre-split corner remained more pronounced and moved inward less.
+				The additional vertices were closer to the original corner, so their
+				weighted influence constrained the smoothing to a smaller region.
+				This demonstrates how supporting edges can reduce, although not
+				completely eliminate, the rounding of sharp features.
+			</p>
+
+			<h4>Testing and Debugging</h4>
+
+			<p>
+				Part 6 depended directly on the correctness of my edge-flip and
+				edge-split implementations. I first tested one subdivision iteration and
+				checked that each original triangle became four triangles without holes.
+				I then applied several iterations to verify that repeated splits and
+				flips preserved valid mesh connectivity.
+			</p>
+
+			<p>
+				A useful implementation safeguard was storing all original edge
+				iterators before beginning the split loop. Iterating directly over the
+				growing edge collection could also visit newly created edges and continue
+				splitting indefinitely. I also used the <code>isNew</code> flags to
+				distinguish original edge segments from newly created connecting edges,
+				ensuring that only the required old-new edges were flipped.
+			</p>
+
 		</div>
 	</body>
 </html>
